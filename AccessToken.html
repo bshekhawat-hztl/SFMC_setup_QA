@@ -1,0 +1,75 @@
+
+<script runat="server">
+    Platform.Load("Core", "1");
+    
+    function getAccessToken(){
+    
+    var clientId, clientSecret, accountId, tenantId;
+    var dataRows = Platform.Function.LookupRows('APIPackageDetails','CredName','APIB');
+    var contactDeletionDEKey = '70F0F85C-E4F9-4863-A77D-E7A02D2E2E9A';
+    
+    if(dataRows && dataRows.length > 0) {
+
+        Write("Integration Credentials found. Retriveing Access token..."+"<br><br>");
+        clientId = dataRows[0]["ClientId"];
+        clientSecret = dataRows[0]["ClientSecret"];
+        accountId = dataRows[0]["AccountId"].replace(/ /g,'');
+        tenantId = dataRows[0]["TenantId"];
+
+        var payload = '{"grant_type": "client_credentials","client_id": "'+clientId+'","client_secret": "'+clientSecret+'","account_id": "'+accountId+'"}';
+        var authurl = 'https://'+tenantId+'.auth.marketingcloudapis.com/v2/token';
+        var contentType = 'application/json';
+
+        var response = HTTP.Post(authurl, contentType, payload);
+
+        return Platform.Function.ParseJSON(response.Response[0]);
+
+    }
+    else
+        Write("No valid integration credentials found."+"<br><br>");
+
+}
+    
+    try{
+        var jsonresp = getAccessToken();
+        var authToken = jsonresp.access_token;
+        var restURL = jsonresp.rest_instance_url;
+        Write("Access Token = "+authToken+"<br>");
+        Write("REST URL = "+restURL+"<br><br>");
+
+        endpoint = restURL+'contacts/v1/contacts/actions/delete?type=listReference';
+       
+        payload = {
+        deleteOperationType: 'ContactAndAttributes',
+        targetList: {
+            listType: { listTypeID: 3 },
+            listKey: contactDeletionDEKey
+        },
+        deleteListWhenCompleted: false,
+        deleteListContentsWhenCompleted: true
+    };
+    var headerNames = ['Authorization'];
+    var headerValues = ['Bearer ' + authToken];
+
+    response = HTTP.Post(endpoint, contentType, Stringify(payload), headerNames, headerValues);
+        if (debugging) debugValue('Response', response);
+        Write("DeleteRequested"+response)
+
+    }
+    
+    catch(e){
+        Write("Exception occcured: "+e+"<br>");
+    }
+
+    
+    </script>
+    
+    <!DOCTYPE html>
+    <html lang ="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Document</title>
+    </head>
+    <body>
+    </body>
+    </html>
